@@ -1,42 +1,9 @@
-# Deploying your own copy
+# Hosting
 
-## Sites
+The existing Sites host supports public access, with Supabase Google sign-in inside the app for saving private data. Vercel is optional; no second hosting service is required.
 
-The hosted example runs on Sites. This repository's `.openai/hosting.json` declares a logical D1 binding (`DB`) and intentionally has no project ID.
+This repository currently builds a Cloudflare Worker with Vinext. Do not import it into Vercel as an ordinary Next.js deployment without adapting the build/runtime and weather route. Supabase remains the same backend if you later move hosts. Update the Google JavaScript origin and Supabase allowed return URL to the new domain before testing login.
 
-To create your own deployment, ask Codex with the Sites plugin to open this repository, register a new Site, preserve `DB`, build the Worker, apply the included migrations, and publish privately. Sites manages the real database binding and authentication boundary. Do not copy another project's Site ID or publish into the example's deployment.
+For a new copy, configure your own Supabase project and public client configuration, apply both Supabase migrations and the seed, enable Google, and use the Sites plugin to register and deploy the Worker. The legacy D1 migrations are retained only as historical teaching material.
 
-## Other Cloudflare Workers deployments
-
-The build emits a Worker, but a standalone deployment also needs:
-
-1. A real D1 database bound as `DB`.
-2. The included migrations applied to that database in order.
-3. A verified authentication/session provider replacing `identity()` in `lib/store.ts`.
-4. Frontend sign-in/sign-out links adapted to that provider.
-5. A deliberate public/private access policy.
-
-Do not deploy the existing identity-header adapter on an unprotected public endpoint. The `oai-authenticated-user-*` headers are trustworthy only behind the Sites authentication boundary.
-
-## Local production preview
-
-After building and applying local migrations:
-
-```sh
-npm start -- --port 4174
-```
-
-The built preview has no sign-in simulator. Use `npm run dev` for classroom sign-in demonstrations. Both previews use the project-local `.wrangler/state` database directory.
-
-## Release checks
-
-- Search and category filters work, including empty results.
-- A signed-in visitor can save and reload favorites and itinerary details.
-- Anonymous trip API requests are rejected.
-- One visitor cannot retrieve another visitor's trip.
-- Invalid place IDs and malformed dates are rejected.
-- A stale revision produces a conflict instead of overwriting newer data.
-- Weather failure leaves the rest of the app usable.
-- Images and attributions load correctly.
-
-CI builds the app but does not deploy it. Production database records and migrations must be managed separately from source changes.
+Release checks: public browsing, Google cancellation/login/logout, save/reload, two-user isolation, stale revisions, invalid stops, mobile layout, and weather failure handling. Google OAuth stays limited to configured test users while its audience is in testing mode.

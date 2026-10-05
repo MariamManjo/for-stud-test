@@ -1,6 +1,6 @@
 # Google sign-in and Supabase: connection status
 
-The live example currently uses Sites ChatGPT authentication and D1 storage. The Supabase files in this repository are **preparation only**: no Supabase project has been selected, no migration has been applied, and Google login is not connected. Account-level GitHub/ChatGPT connections in Supabase do not configure application authentication.
+The app now uses the supported Supabase JavaScript SDK for Google OAuth, public place reads, and user-owned trip data. The database schema, seed, and transactional save function have been applied to the owner's project. Google is enabled with a test user; completing a real visitor login is a separate release check.
 
 ## What the owner needs to configure
 
@@ -24,12 +24,12 @@ Database isolation: https://supabase.com/docs/guides/database/postgres/row-level
 
 Foreign keys reject nonexistent places. Row-level security requires the authenticated Supabase user ID to match every private row's owner. Deleting an auth user removes their trip, stops, and favorites. Existing D1 data is not automatically copied: a ChatGPT user ID cannot be assumed to identify the same person as a Supabase UUID.
 
-## Implementation after project selection
+## Implemented connection
 
-Use the supported Supabase JavaScript client for Google OAuth and session refresh. Replace the existing Sites identity adapter with server-verified Supabase authentication and pass the visitor's bearer token through to database requests so RLS applies. Never trust a user ID sent from a browser or the existing identity headers on a public standalone deployment.
+`browser/supabase.js` creates a PKCE client; `scripts/build-auth.mjs` bundles it for the browser. The URL and publishable key are public configuration. Supabase verifies bearer tokens and applies RLS to every private database operation. The `save_tbilisi_trip` function is security invoker and atomically saves stops, favorites, and trip details using the expected revision.
 
-Save the trip, ordered stops, and favorites together in a database transaction, checking the expected revision so concurrent tabs cannot overwrite each other. Adapt the existing API response shape to preserve the current planner UI. Replace ChatGPT links with real Google login and sign-out actions, display the visitor's account, handle cancellation and expired sessions, and reload saved data after login.
+The old D1 trip and catalog API endpoints return HTTP 410. No client-supplied identity headers grant access to the new data. The guide allows anonymous browsing/planning; Google sign-in is required to save. Unsaved anonymous drafts are discarded on sign-in after a confirmation.
 
-Choose an app hosting/access path that allows Google users to reach the site. The current owner-private Sites URL still has a ChatGPT access boundary. Replacing a button does not remove that boundary. Confirm the platform's external-auth path or use a standalone deployment before publishing the Google version.
+Verified in the actual database: atomic save, stop ordering, stale revision rejection, rollback on nonexistent place IDs, and cross-user isolation. Temporary verification users and records were rolled back. The local browser loaded six Supabase places and live weather, generated a draft, and rejected anonymous saving. A complete Google consent/login/save/reload test still requires the owner's Google account.
 
-Before release, test Google login/cancellation/logout/refresh; anonymous rejection; two-user data isolation; invalid place IDs; transactional rollback; stale revision conflicts; and public catalog access. The prepared SQL has not been executed or tested against a Supabase database yet.
+Existing D1 trip data is not automatically migrated to Supabase identities.

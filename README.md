@@ -4,11 +4,11 @@ A visual city guide and saved trip planner, built as a teaching example with Cod
 
 [Hosted example](https://tbilisi-explored.manjo-m.chatgpt.site/) · [Architecture](docs/ARCHITECTURE.md) · [Student exercises](docs/STUDENT_GUIDE.md) · [Deployment](docs/DEPLOYMENT.md)
 
-The hosted example is private and requires an allowed ChatGPT account. Repository access does not grant access to the hosted app.
+The guide uses Google sign-in through Supabase. Places are publicly readable; trips and favorites belong to the signed-in Supabase user. Google OAuth is currently in testing mode, so add permitted test accounts in Google Cloud before testing sign-in.
 
 ## Google login and Supabase
 
-Google authentication and Supabase storage are the next integration. Database migrations, a real-place seed, and the account configuration steps are prepared in [the connection guide](docs/SUPABASE_GOOGLE.md). They have not been applied or connected to the live app.
+The app connects to the owner's Supabase project. To use your own database, apply both migrations under `supabase/migrations/`, then `supabase/seed.sql`, and replace the public project URL and publishable key in `browser/supabase.js`. Configure Google OAuth and return URLs using [the connection guide](docs/SUPABASE_GOOGLE.md). Run `npm run build:auth` after changing client configuration. Never put a Google client secret or Supabase secret/service-role key in frontend code.
 
 ## What works
 
@@ -16,7 +16,7 @@ Google authentication and Supabase storage are the next integration. Database mi
 - Search, filter by category, and save favorites.
 - Suggest a day based on interests and available time.
 - Add, remove, and reorder stops; edit the trip name, date, and notes.
-- Save one current itinerary per signed-in visitor in a D1 database.
+- Save one current itinerary per Google user in Supabase Postgres.
 - Retrieve live Tbilisi weather through a server-side Open-Meteo request.
 - Use browser WebMCP tools where the browser supports them.
 
@@ -29,8 +29,8 @@ The guided planner uses predefined suggestions, not a paid language model. Time 
 | UI | HTML, CSS, browser JavaScript |
 | Backend | TypeScript route handlers with Vinext |
 | Runtime | Cloudflare Workers |
-| Database | Cloudflare D1 / SQLite; Drizzle schema and migrations |
-| Authentication | Sites-provided ChatGPT identity in production; local mock sign-in in development |
+| Database | Supabase Postgres with row-level security |
+| Authentication | Supabase Google OAuth with PKCE and automatic session refresh |
 | Weather | Open-Meteo |
 | Maps | OpenStreetMap embeds and links |
 
@@ -45,41 +45,13 @@ npm run install:ci
 npm run build
 ```
 
-Initialize the local database using the included migration:
-
-```sh
-node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_naive_tana_nile.sql
-```
-
 Start the development server:
 
 ```sh
 npm run dev -- --port 4173
 ```
 
-Open the URL printed by the server. In **My trip**, choose **Sign in with ChatGPT**. Local development uses a test identity (`seedy@sites.test`); it does not contact a real identity provider. Generate a plan, save it, and refresh to check persistence.
-
-Do not reapply the same migration to an existing local database. For schema changes, run `npm run db:generate`, inspect the generated SQL, then apply only the new migrations in order.
-
-## Project map
-
-```text
-public/index.html       Page markup
-public/style.css        Visual design and responsive layout
-public/app.js           Search, favorites, trip planner, browser tools
-public/assets/          Licensed Tbilisi photographs
-lib/document.ts         HTML served by the root route
-lib/places.json         Initial place catalog
-lib/store.ts            Database, identity, and response helpers
-app/api/places/         Place catalog endpoint
-app/api/state/          Private trip read/write endpoint
-app/api/weather/        Weather endpoint
-db/schema.ts            Database table definitions
-drizzle/                Versioned database migrations
-build/                  Worker and Sites integration
-scripts/                Local runtime and dependency helpers
-docs/                   Architecture, lessons, deployment, and credits
-```
+Browsing and guided planning work anonymously. Saving requires a real Google session. For local Google login, add your exact localhost return URL to Supabase's redirect allowlist. Google login no longer uses the starter's mock identity or D1 database.
 
 After editing `public/index.html`, run `npm run sync:html` so `lib/document.ts` stays synchronized. Build and CI check this synchronization.
 
@@ -94,7 +66,7 @@ The original implementation was manually checked for save/reload, separate accou
 
 ## Deployment and boundaries
 
-This project needs a Worker runtime, a D1 binding named `DB`, database migrations, and trusted authentication. GitHub Pages can host static files but cannot run this backend. See [deployment instructions](docs/DEPLOYMENT.md).
+This version runs on a Worker host and uses Supabase for authentication and application data. The legacy D1 binding is retained for host compatibility but is not used by the new trip or catalog flows. GitHub Pages can host static files but cannot run this backend. See [deployment instructions](docs/DEPLOYMENT.md).
 
 The repository deliberately omits the hosted example's Site ID, credentials, live database contents, local database files, and environment secrets. No AI API key is required. Hosting and external services have their own usage limits; this repository does not promise unlimited free production use.
 
