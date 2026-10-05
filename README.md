@@ -6,6 +6,10 @@ A visual city guide and saved trip planner, built as a teaching example with Cod
 
 The hosted example is private and requires an allowed ChatGPT account. Repository access does not grant access to the hosted app.
 
+## Google login and Supabase
+
+Google authentication and Supabase storage are the next integration. Database migrations, a real-place seed, and the account configuration steps are prepared in [the connection guide](docs/SUPABASE_GOOGLE.md). They have not been applied or connected to the live app.
+
 ## What works
 
 - Browse six Tbilisi places with distinct photos, descriptions, and maps.
